@@ -142,7 +142,9 @@ contract DutchAuctionNft is ERC721, Ownable, ReentrancyGuard {
     function endAuction() external onlyWhenAuctionNotEnded {
         if (totalSupply != MAX_SUPPLY && block.timestamp < auctionStartTime + 48 hours) revert AuctionNotEnded();
 
-        finalPrice = AUCTION_END_PRICE;
+        if (totalSupply != MAX_SUPPLY) {
+            finalPrice = AUCTION_END_PRICE;
+        }
         auctionEnded = true;
     }
 

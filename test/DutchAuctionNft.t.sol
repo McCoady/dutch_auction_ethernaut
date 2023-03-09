@@ -46,7 +46,7 @@ contract DutchAuctionTest is Test {
         uint256 currentPrice = dan.calculatePrice();
         assertEq(currentPrice, 1 ether);
         dan.mint{value: 1 ether}(1);
-        assertEq(dan.balanceOf(address(alice)), 1);
+        assertEq(dan.balanceOf(alice), 1);
         assertEq(dan.tokenURI(0), "https://www.test.org/0");
     }
 
@@ -121,7 +121,7 @@ contract DutchAuctionTest is Test {
         uint256 currentPrice = dan.calculatePrice();
         assertEq(currentPrice, 1 ether);
         dan.mint{value: 1 ether}(1);
-        assertEq(dan.balanceOf(address(alice)), 1);
+        assertEq(dan.balanceOf(alice), 1);
     }
 
     function testMintThree() public {
@@ -130,7 +130,7 @@ contract DutchAuctionTest is Test {
         uint256 currentPrice = dan.calculatePrice();
         assertEq(currentPrice, 1 ether);
         dan.mint{value: 3 ether}(3);
-        assertEq(dan.balanceOf(address(alice)), 3);
+        assertEq(dan.balanceOf(alice), 3);
     }
 
     function testMintOneHigherValueSent() public {
@@ -165,9 +165,9 @@ contract DutchAuctionTest is Test {
         uint256 currentPrice = dan.calculatePrice();
         assertEq(currentPrice, 1 ether);
         dan.mint{value: 1 ether}(1);
-        assertEq(dan.balanceOf(address(alice)), 1);
+        assertEq(dan.balanceOf(alice), 1);
         dan.mint{value: 2 ether}(2);
-        assertEq(dan.balanceOf(address(alice)), 3);        
+        assertEq(dan.balanceOf(alice), 3);        
     }
 
     function testCannotMintFourInOneTx() public {
@@ -184,7 +184,7 @@ contract DutchAuctionTest is Test {
         uint256 currentPrice = dan.calculatePrice();
         assertEq(currentPrice, 1 ether);
         dan.mint{value: 2 ether}(2);
-        assertEq(dan.balanceOf(address(alice)), 2);
+        assertEq(dan.balanceOf(alice), 2);
         vm.expectRevert(DutchAuctionNft.MaxWalletMint.selector);
         dan.mint{value: 2 ether}(2);
     }
@@ -255,10 +255,10 @@ contract DutchAuctionTest is Test {
         vm.warp(2 * 60 * 60 * 24 + 1);
         dan.endAuction();
         console.log(dan.finalPrice());
-        uint256 currentBalance = address(alice).balance;
+        uint256 currentBalance = alice.balance;
         console.log(address(dan).balance);
         dan.refund();
-        assertEq(address(alice).balance, currentBalance + 0.9 ether);
+        assertEq(alice.balance, currentBalance + 0.9 ether);
     }
 
     function testRefundMintThree() public {
@@ -273,9 +273,9 @@ contract DutchAuctionTest is Test {
         vm.warp(2 * 60 * 60 * 24 + 1);
         dan.endAuction();
 
-        uint256 currentBalance = address(alice).balance;
+        uint256 currentBalance = alice.balance;
         dan.refund();
-        assertEq(address(alice).balance, currentBalance + 2.7 ether);
+        assertEq(alice.balance, currentBalance + 2.7 ether);
     }
 
     function testRefundMintOneHigherPrice() public {
@@ -290,9 +290,33 @@ contract DutchAuctionTest is Test {
         vm.warp(2 * 60 * 60 * 24 + 1);
         dan.endAuction();
 
-        uint256 currentBalance = address(alice).balance;
+        uint256 currentBalance = alice.balance;
         dan.refund();
-        assertEq(address(alice).balance, currentBalance + 0.85 ether);
+        assertEq(alice.balance, currentBalance + 0.85 ether);
+    }
+
+    function testRefundAfterSellout() public {
+        initAuction();
+
+        startHoax(alice);
+        uint256 currentPrice = dan.calculatePrice();
+        assertEq(currentPrice, 1 ether);
+        dan.mint{value: 1 ether}(1);
+        assertEq(dan.balanceOf(alice), 1);
+        vm.stopPrank();
+        vm.warp(10 * 60 + 1);
+        for (uint256 i = 0; i < 499; i++) {
+            
+            dan.mint{value: 0.95 ether}(1);
+        }
+        assertEq(dan.balanceOf(address(this)), 499);
+        dan.endAuction();
+        assertEq(dan.finalPrice(), 0.95 ether);
+        startHoax(alice);
+        uint256 aliceBalance = alice.balance;
+        dan.refund();
+        
+        assertEq(alice.balance, aliceBalance + 0.05 ether);
     }
 
     function testRefundMintThreeHigherPrice() public {
@@ -307,9 +331,9 @@ contract DutchAuctionTest is Test {
         vm.warp(2 * 60 * 60 * 24 + 1);
         dan.endAuction();
 
-        uint256 currentBalance = address(alice).balance;
+        uint256 currentBalance = alice.balance;
         dan.refund();
-        assertEq(address(alice).balance, currentBalance + 2.55 ether);
+        assertEq(alice.balance, currentBalance + 2.55 ether);
     }
 
     function testCannotRefundNoMint() public {
@@ -351,7 +375,7 @@ contract DutchAuctionTest is Test {
         uint256 currentPrice = dan.calculatePrice();
         assertEq(currentPrice, 1 ether);
         dan.mint{value: 3 ether}(3);
-        assertEq(dan.balanceOf(address(alice)), 3);
+        assertEq(dan.balanceOf(alice), 3);
         assertEq(address(dan).balance, 3 ether);
 
         vm.warp(2 * 60 * 60 * 24 + 1);
@@ -368,14 +392,14 @@ contract DutchAuctionTest is Test {
         uint256 currentPrice = dan.calculatePrice();
         assertEq(currentPrice, 1 ether);
         dan.mint{value: 3 ether}(3);
-        assertEq(dan.balanceOf(address(alice)), 3);
+        assertEq(dan.balanceOf(alice), 3);
         assertEq(address(dan).balance, 3 ether);
 
         vm.warp(2 * 60 * 60 * 24 + 1);
-        uint256 currentBalance = address(alice).balance;
+        uint256 currentBalance = alice.balance;
         dan.endAuction();
         dan.refund();
-        assertEq(address(alice).balance, currentBalance + 2.7 ether);
+        assertEq(alice.balance, currentBalance + 2.7 ether);
         vm.stopPrank();
 
         uint256 balanceThis = address(this).balance;
@@ -389,7 +413,7 @@ contract DutchAuctionTest is Test {
         uint256 currentPrice = dan.calculatePrice();
         assertEq(currentPrice, 1 ether);
         dan.mint{value: 3 ether}(3);
-        assertEq(dan.balanceOf(address(alice)), 3);
+        assertEq(dan.balanceOf(alice), 3);
         assertEq(address(dan).balance, 3 ether);
         vm.stopPrank();
 
@@ -403,7 +427,7 @@ contract DutchAuctionTest is Test {
         uint256 currentPrice = dan.calculatePrice();
         assertEq(currentPrice, 1 ether);
         dan.mint{value: 3 ether}(3);
-        assertEq(dan.balanceOf(address(alice)), 3);
+        assertEq(dan.balanceOf(alice), 3);
         assertEq(address(dan).balance, 3 ether);
         vm.stopPrank();
 
