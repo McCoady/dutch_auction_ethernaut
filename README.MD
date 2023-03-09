@@ -1,6 +1,6 @@
 # Dutch Auction NFT
 
-A practice implementation of a dutch auction NFT (not recommended for use in production) where initial mint price starts at 1 ether and drops 0.05 ethers every 10 minutes until it stops at 0.1 ether. If not already sold out, the minting period can be ended by anyone 48 hours after the start of the auction.
+A practice implementation of a dutch auction NFT (not recommended for use in production) where initial mint price starts at 1 ether and drops 0.05 ethers every 10 minutes until it stops at 0.1 ether. If not already sold out, the minting period can be ended by anyone 48 hours after the start of the auction. Collection size is set to 500.
 
 Contract allows users to reclaim the difference between their mint price & final price after the auction ends. Also refunds user (within mint tx) if sent too much eth (for example if the price decremented while pending).
 
