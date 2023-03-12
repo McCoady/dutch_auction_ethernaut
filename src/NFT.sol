@@ -6,6 +6,9 @@ import "openzeppelin-contracts/security/ReentrancyGuard.sol";
 import "solmate/tokens/ERC721.sol";
 import "solmate/utils/LibString.sol";
 
+/// @title A basic NFT contract implementation
+/// @author mctoady.eth @traintesttoad
+/// @notice Allows user to set an immutable max token supply (MAX_SUPPLY) and max tokens minted per wallet (MAX_PER_WALLET) in the constructor
 abstract contract NFT is ERC721, Ownable, ReentrancyGuard {
     using LibString for uint256;
 
@@ -23,7 +26,9 @@ abstract contract NFT is ERC721, Ownable, ReentrancyGuard {
         MAX_PER_WALLET = _maxPerWallet;
     }
 
-    //tokenURI
+    /// @notice return the tokenURI for a chosen _tokenId
+    /// @param _tokenId, the token Id
+    /// @return _uri, the uri of _tokenId chosen
     function tokenURI(
         uint256 _tokenId
     ) public view override returns (string memory _uri) {
