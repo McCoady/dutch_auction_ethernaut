@@ -27,15 +27,14 @@ contract DutchAuctionNft is ERC721, Ownable, ReentrancyGuard {
     uint256 public constant MAX_SUPPLY = 500;
     uint256 public constant MAX_PER_WALLET = 3;
     uint256 public constant AUCTION_START_PRICE = 1 ether;
-    uint256 public constant AUCTION_END_PRICE = 0.1 ether;
+    uint256 public constant AUCTION_RESTING_PRICE = 0.1 ether;
     uint256 public constant AUCTION_PRICE_DROP_FREQ = 10 * 60;
     uint256 public constant AUCTION_PRICE_DROP_AMOUNT = 0.05 ether;
 
     uint256 public totalSupply;
     uint256 public auctionStartTime;
-    uint256 public finalPrice;
+    uint256 public finalPaidPrice;
     string public uri;
-
 
     bool private auctionInit;
     bool public auctionEnded;
@@ -59,16 +58,17 @@ contract DutchAuctionNft is ERC721, Ownable, ReentrancyGuard {
     function getMintInfo() external view returns (MintInfo memory) {
         return userMintInfo[msg.sender];
     }
+
     function calculatePrice() public view returns (uint256 price) {
         if (!auctionInit) revert AuctionNotStarted();
 
-        if (auctionEnded) return finalPrice;
+        if (auctionEnded) return finalPaidPrice;
 
         uint256 timeSinceStart = block.timestamp - auctionStartTime;
         uint256 numAuctionDrops = timeSinceStart / AUCTION_PRICE_DROP_FREQ;
         uint256 auctionPriceDrop = numAuctionDrops * AUCTION_PRICE_DROP_AMOUNT;
 
-        if (auctionPriceDrop > AUCTION_START_PRICE - AUCTION_END_PRICE) {
+        if (auctionPriceDrop > AUCTION_START_PRICE - AUCTION_RESTING_PRICE) {
             price = 0.1 ether;
         } else {
             price = AUCTION_START_PRICE - auctionPriceDrop;
@@ -76,9 +76,14 @@ contract DutchAuctionNft is ERC721, Ownable, ReentrancyGuard {
     }
 
     //mint
-    function mint(uint256 _amount) external payable onlyWhenAuctionNotEnded nonReentrant {
+    function mint(
+        uint256 _amount
+    ) external payable onlyWhenAuctionNotEnded nonReentrant {
         if (!auctionInit) revert AuctionNotStarted();
-        if (msg.sender != owner() && _amount + walletMints[msg.sender] > MAX_PER_WALLET) revert MaxWalletMint();
+        if (
+            msg.sender != owner() &&
+            _amount + walletMints[msg.sender] > MAX_PER_WALLET
+        ) revert MaxWalletMint();
 
         uint256 nextTokenId = totalSupply;
         uint256 newTotalSupply = nextTokenId + _amount;
@@ -87,18 +92,18 @@ contract DutchAuctionNft is ERC721, Ownable, ReentrancyGuard {
 
         uint256 _mintPrice = calculatePrice();
         if (msg.value < _mintPrice * _amount) revert WrongPrice();
-
-        for (; nextTokenId < newTotalSupply; ++nextTokenId) {
-            _mint(msg.sender, nextTokenId);
-        }
+        
         userMintInfo[msg.sender] = MintInfo(_mintPrice, _amount);
         walletMints[msg.sender] += _amount;
 
         totalSupply = newTotalSupply;
         if (totalSupply == MAX_SUPPLY) {
-            finalPrice = _mintPrice;
+            finalPaidPrice = _mintPrice;
         }
 
+        for (; nextTokenId < newTotalSupply; ++nextTokenId) {
+            _mint(msg.sender, nextTokenId);
+        }
         if (msg.value > _mintPrice * _amount) {
             uint256 refundDue = msg.value - _mintPrice * _amount;
             (bool sent, ) = msg.sender.call{value: refundDue}("");
@@ -109,9 +114,10 @@ contract DutchAuctionNft is ERC721, Ownable, ReentrancyGuard {
     //refund
     function refund() external onlyWhenAuctionEnded {
         MintInfo memory _userInfo = userMintInfo[msg.sender];
-        if (_userInfo.mintPrice <= AUCTION_END_PRICE) revert NothingToRefund();
-        
-        uint256 refundDue = (_userInfo.mintPrice - finalPrice) * _userInfo.amountMinted;
+        if (_userInfo.mintPrice <= AUCTION_RESTING_PRICE) revert NothingToRefund();
+
+        uint256 refundDue = (_userInfo.mintPrice - finalPaidPrice) *
+            _userInfo.amountMinted;
         (bool sent, ) = msg.sender.call{value: refundDue}("");
         require(sent, "Failed to send Ether");
     }
@@ -128,8 +134,11 @@ contract DutchAuctionNft is ERC721, Ownable, ReentrancyGuard {
     function setBaseURI(string calldata _newBaseURI) external onlyOwner {
         uri = _newBaseURI;
     }
+
     //startAuction
-    function initAuction(string calldata _initialUri) external payable onlyOwner {
+    function initAuction(
+        string calldata _initialUri
+    ) external payable onlyOwner {
         if (auctionInit) revert AuctionInit();
 
         auctionStartTime = block.timestamp;
@@ -140,17 +149,22 @@ contract DutchAuctionNft is ERC721, Ownable, ReentrancyGuard {
 
     //endAuction (totalSupply == MAX_SUPPLY or timelimit passed)
     function endAuction() external onlyWhenAuctionNotEnded {
-        if (totalSupply != MAX_SUPPLY && block.timestamp < auctionStartTime + 48 hours) revert AuctionNotEnded();
+        if (
+            totalSupply != MAX_SUPPLY &&
+            block.timestamp < auctionStartTime + 48 hours
+        ) revert AuctionNotEnded();
 
         if (totalSupply != MAX_SUPPLY) {
-            finalPrice = AUCTION_END_PRICE;
+            finalPaidPrice = AUCTION_RESTING_PRICE;
         }
         auctionEnded = true;
     }
 
     //withdraw (onlyowner) require auctionEnded
-    function withdraw(address _to) external payable onlyOwner onlyWhenAuctionEnded {
-        uint256 totalFunds = totalSupply * finalPrice;
+    function withdraw(
+        address _to
+    ) external payable onlyOwner onlyWhenAuctionEnded {
+        uint256 totalFunds = totalSupply * finalPaidPrice;
         // necessary?
         if (totalFunds > address(this).balance) {
             totalFunds = address(this).balance;
