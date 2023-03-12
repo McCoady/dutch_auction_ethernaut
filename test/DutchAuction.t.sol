@@ -2,15 +2,15 @@
 pragma solidity 0.8.17;
 
 import "forge-std/Test.sol";
-import "../src/DutchAuctionNft.sol";
+import "../src/DutchAuction.sol";
 
 contract DutchAuctionTest is Test {
-    DutchAuctionNft dan;
+    DutchAuction dan;
 
     address alice = makeAddr("alice");
 
     function setUp() public {
-        dan = new DutchAuctionNft();
+        dan = new DutchAuction();
     }
 
     function testConstants() public {
@@ -65,7 +65,7 @@ contract DutchAuctionTest is Test {
         initAuction();
         uint256 startTime = dan.auctionStartTime();
         assertEq(startTime, block.timestamp);
-        vm.expectRevert(DutchAuctionNft.AuctionInit.selector);
+        vm.expectRevert(DutchAuction.AuctionInit.selector);
         initAuction();
     }
 
@@ -175,7 +175,7 @@ contract DutchAuctionTest is Test {
         startHoax(alice);
         uint256 currentPrice = dan.calculatePrice();
         assertEq(currentPrice, 1 ether);
-        vm.expectRevert(DutchAuctionNft.MaxWalletMint.selector);
+        vm.expectRevert(DutchAuction.MaxWalletMint.selector);
         dan.mint{value: 4 ether}(4);
     }
     function testCannotMintFourInTwoTx() public {
@@ -185,7 +185,7 @@ contract DutchAuctionTest is Test {
         assertEq(currentPrice, 1 ether);
         dan.mint{value: 2 ether}(2);
         assertEq(dan.balanceOf(alice), 2);
-        vm.expectRevert(DutchAuctionNft.MaxWalletMint.selector);
+        vm.expectRevert(DutchAuction.MaxWalletMint.selector);
         dan.mint{value: 2 ether}(2);
     }
 
@@ -195,7 +195,7 @@ contract DutchAuctionTest is Test {
             dan.mint{value: 1 ether}(1);
         }
         assertEq(dan.balanceOf(address(this)), 500);
-        vm.expectRevert(DutchAuctionNft.SoldOut.selector);
+        vm.expectRevert(DutchAuction.SoldOut.selector);
         dan.mint{value: 1 ether}(1);
     }
 
@@ -231,13 +231,13 @@ contract DutchAuctionTest is Test {
         initAuction();
         vm.warp(1 * 60 * 60 * 24 + 1);
         startHoax(alice);
-        vm.expectRevert(DutchAuctionNft.AuctionNotEnded.selector);
+        vm.expectRevert(DutchAuction.AuctionNotEnded.selector);
         dan.endAuction();
     }
 
     function testCannotEndAuctionBeforeInit() public {
         startHoax(alice);
-        vm.expectRevert(DutchAuctionNft.AuctionNotEnded.selector);
+        vm.expectRevert(DutchAuction.AuctionNotEnded.selector);
         dan.endAuction();
     }
 
@@ -254,7 +254,7 @@ contract DutchAuctionTest is Test {
         // jump further than 2 days
         vm.warp(2 * 60 * 60 * 24 + 1);
         dan.endAuction();
-        console.log(dan.finalPrice());
+        console.log(dan.finalPaidPrice());
         uint256 currentBalance = alice.balance;
         console.log(address(dan).balance);
         dan.refund();
@@ -311,7 +311,7 @@ contract DutchAuctionTest is Test {
         }
         assertEq(dan.balanceOf(address(this)), 499);
         dan.endAuction();
-        assertEq(dan.finalPrice(), 0.95 ether);
+        assertEq(dan.finalPaidPrice(), 0.95 ether);
         startHoax(alice);
         uint256 aliceBalance = alice.balance;
         dan.refund();
@@ -347,11 +347,11 @@ contract DutchAuctionTest is Test {
         vm.warp(2 * 60 * 60 * 24 + 1);
         dan.endAuction();
         startHoax(alice);
-        vm.expectRevert(DutchAuctionNft.NothingToRefund.selector);
+        vm.expectRevert(DutchAuction.NothingToRefund.selector);
         dan.refund();
     }
 
-    function testCannotRefundMintFinalPrice() public {
+    function testCannotRefundMintFinalPaidPrice() public {
         initAuction();
         vm.warp(1 * 60 * 60 * 24);
         startHoax(alice);
@@ -362,7 +362,7 @@ contract DutchAuctionTest is Test {
         // jump an extra days
         vm.warp(2 * 60 * 60 * 24 + 1);
         dan.endAuction();
-        vm.expectRevert(DutchAuctionNft.NothingToRefund.selector);
+        vm.expectRevert(DutchAuction.NothingToRefund.selector);
         dan.refund();
     }
 
@@ -417,7 +417,7 @@ contract DutchAuctionTest is Test {
         assertEq(address(dan).balance, 3 ether);
         vm.stopPrank();
 
-        vm.expectRevert(DutchAuctionNft.AuctionNotEnded.selector);
+        vm.expectRevert(DutchAuction.AuctionNotEnded.selector);
         dan.withdraw(address(this));
     }
 
@@ -432,7 +432,7 @@ contract DutchAuctionTest is Test {
         vm.stopPrank();
 
         vm.warp(2 * 60 * 60 * 24 + 1);
-        vm.expectRevert(DutchAuctionNft.AuctionNotEnded.selector);
+        vm.expectRevert(DutchAuction.AuctionNotEnded.selector);
         dan.withdraw(address(this));
     }
 
